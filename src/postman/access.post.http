@@ -1,0 +1,24 @@
+@url_dev=http://localhost:4000/v1/api/
+
+###signup
+
+POST {{url_dev}}/shop/signup
+Content-Type: application/json
+x-api-key:6420ee69d3e2e77d1b356fd218b1237477ee0489ebfe3767c47cd5753119546714c17357137d033e7e816db872d324b905ab94d74fa9e8c2ee04f8f76b5bdaa1
+
+{
+    "name": "Shop Ramsay",
+    "email":"ramsay400700@gmail.com",
+    "password": "abc123"
+}
+
+###signin
+
+POST {{url_dev}}/shop/signin
+Content-Type: application/json
+x-api-key:6420ee69d3e2e77d1b356fd218b1237477ee0489ebfe3767c47cd5753119546714c17357137d033e7e816db872d324b905ab94d74fa9e8c2ee04f8f76b5bdaa1
+
+{
+    "email":"ramsay400700@gmail.com",
+    "password": "abc123"
+}
