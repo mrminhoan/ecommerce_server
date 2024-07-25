@@ -2,7 +2,7 @@
 
 const keyTokenModel = require("../models/keytoken.model");
 const { ErrorResponse } = require("../core/error.response");
-const { mongoose } = require("mongoose");
+const mongoose = require("mongoose");
 class KeyTokenService {
   static createKeyToken = async ({
     userId,
@@ -36,7 +36,7 @@ class KeyTokenService {
       );
       return tokens ? tokens.publicKey : null;
     } catch (error) {
-      throw new ErrorResponse();
+      throw ErrorResponse();
     }
   };
   static findByUserId = async (userId) => {
@@ -44,8 +44,9 @@ class KeyTokenService {
     return await keyTokenModel.findOne({ user: _userId }).lean();
   };
   static removeById = async (id) => {
-    const _id = new mongoose.Types.ObjectId(id);
-    const deleteKey = await keyTokenModel.findOneAndDelete({ _id });
+    const deleteKey = await keyTokenModel.findOneAndDelete({
+      _id: new mongoose.Types.ObjectId(id),
+    });
     return deleteKey;
   };
   static findByRefreshTokenUsed = async (refreshToken) => {
@@ -54,10 +55,15 @@ class KeyTokenService {
       .lean();
   };
   static findByRefreshToken = async (refreshToken) => {
-    return await keyTokenModel.findOne({ refreshToken });
+    return await keyTokenModel.findOne({ refreshToken }).lean();
   };
   static deleteKeyById = async (userId) => {
-    return await keyTokenModel.findByIdAndDelete({ user: userId });
+    return await keyTokenModel.findOneAndDelete({
+      user: new mongoose.Types.ObjectId(userId),
+    });
+  };
+  static updateByFilter = async ({ filter, update }) => {
+    return await keyTokenModel.updateOne(filter, update);
   };
 }
 

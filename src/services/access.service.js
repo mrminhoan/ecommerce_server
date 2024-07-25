@@ -12,8 +12,9 @@ const {
   BadRequestError,
   ConflictRequestError,
   AuthFailureError,
+  ForbiddenError,
 } = require("../core/error.response");
-const { findByEmail } = require("./shop.service");
+const { findShopByEmail, findShopById } = require("./shop.service");
 
 const RoleShop = {
   SHOP: "SHOP",
@@ -23,6 +24,118 @@ const RoleShop = {
 };
 
 class AccessService {
+  static handleRefreshTokenV3 = async ({ user, refreshToken }) => {
+    const findKeyStore = await KeyTokenService.findByUserId(user);
+    if (!findKeyStore) throw new AuthFailureError("Shop not registed");
+
+    // Check refresh token đã được dùng
+    if (findKeyStore.refreshTokensUsed.includes(refreshToken)) {
+      // Xem user gửi refresh token hết hạn, đã sử dụng lên là ai:
+      // Nếu Có
+      const { userId } = await this.verifyJWT(
+        refreshToken,
+        findKeyStore.privateKey
+      );
+      await KeyTokenService.deleteKeyById(userId);
+      throw new ForbiddenError("Something wrong happen! PLes login again");
+    }
+
+    // Nếu refresh token chưa được dùng
+    if (findKeyStore.refreshToken !== refreshToken)
+      throw new AuthFailureError("Shop not registed");
+
+    const foundShop = await findShopById(user);
+    if (!foundShop) throw new AuthFailureError("Shop not registed -- 2");
+
+    const { userId, email } = await this.verifyJWT(
+      refreshToken,
+      findKeyStore.privateKey
+    );
+
+    // Create new access Token and refresh Token
+    const tokens = await createTokenPair(
+      { userId, email },
+      findKeyStore.publicKey,
+      findKeyStore.privateKey
+    );
+    try {
+      const filterUpdateKeyStore = new mongoose.Types.ObjectId(
+        findKeyStore._id
+      );
+      const updateKeyStore = {
+        $set: {
+          refreshToken: tokens.refreshToken,
+        },
+        $push: {
+          refreshTokensUsed: refreshToken,
+        },
+      };
+      await KeyTokenService.updateByFilter({
+        filter: { _id: filterUpdateKeyStore },
+        update: updateKeyStore,
+      });
+    } catch (error) {
+      console.log({ error });
+    }
+
+    return {
+      user: { userId, email },
+      tokens,
+    };
+  };
+
+  static handleRefreshTokenV2 = async ({ keyStore, user, refreshToken }) => {
+    const { userId, email } = user;
+    // Check refresh token đã được dùng
+    if (keyStore.refreshTokensUsed.includes(refreshToken)) {
+      // Xem user gửi refresh token hết hạn, đã sử dụng lên là ai:
+      // Nếu Có
+      const { userId, email } = await this.verifyJWT(
+        refreshToken,
+        keyStore.privateKey
+      );
+      await KeyTokenService.deleteKeyById(userId);
+      throw new ForbiddenError("Something wrong happen! PLes login again");
+    }
+
+    // Nếu refresh token chưa được dùng
+    if (keyStore.refreshToken !== refreshToken)
+      throw new AuthFailureError("Shop not registed");
+
+    const foundShop = await findShopByEmail(email);
+    if (!foundShop) throw new AuthFailureError("Shop not registed -- 2");
+
+    // Create new access Token and refresh Token
+    const tokens = await createTokenPair(
+      { userId, email },
+      keyStore.publicKey,
+      keyStore.privateKey
+    );
+    try {
+      const filterUpdateKeyStore = new mongoose.Types.ObjectId(keyStore._id);
+      const updateKeyStore = {
+        $set: {
+          refreshToken: tokens.refreshToken,
+        },
+        $push: {
+          refreshTokensUsed: refreshToken,
+        },
+      };
+      const update = await KeyTokenService.updateByFilter({
+        filter: { _id: filterUpdateKeyStore },
+        update: updateKeyStore,
+      });
+      console.log("Check update key store", update);
+    } catch (error) {
+      console.log({ error });
+    }
+
+    return {
+      user: { userId, email },
+      tokens,
+    };
+  };
+
   static handleRefreshToken = async (refreshToken) => {
     // Check refresh token is used ?
     const foundToken = await KeyTokenService.findByRefreshTokenUsed(
@@ -55,7 +168,7 @@ class AccessService {
       holderToken.privateKey
     );
     // Check userId
-    const foundShop = await findByEmail(email);
+    const foundShop = await findShopByEmail(email);
     if (!foundShop) throw new AuthFailureError("Shop not registed");
 
     // Create new access Token and refresh Token
@@ -96,7 +209,7 @@ class AccessService {
     */
 
     //  1
-    const foundShop = await findByEmail(email);
+    const foundShop = await findShopByEmail(email);
     if (!foundShop) throw new BadRequestError("Shop's not registered");
 
     //  2
