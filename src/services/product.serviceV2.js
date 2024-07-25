@@ -1,3 +1,5 @@
+"use strict";
+const { ObjectId } = require("mongoose").Types;
 const {
   product,
   clothing,
@@ -10,6 +12,13 @@ const {
   NotFoundError,
 } = require("../core/error.response");
 const { PRODUCT_TYPE } = require("../constants");
+const {
+  findAllDraftsForShop,
+  findAllPublishedForShop,
+  publishProductByShop,
+  unPublishProductByShop,
+  searchProductByUser,
+} = require("../models/repositories/product.repo");
 class ProductFactory {
   /*
         type: "Clothing, Electronic"
@@ -25,6 +34,33 @@ class ProductFactory {
     if (!productClass) throw new BadRequestError(`Invalid Product Types`);
 
     return new productClass(payload).createProduction();
+  }
+
+  static async searchProductByUser({ keyword }) {
+    return await searchProductByUser(keyword);
+  }
+
+  static async findAllDraftsForShop({ product_shop, skip = 0, limit = 50 }) {
+    const query = {
+      product_shop: new ObjectId(product_shop),
+      isDraft: true,
+    };
+    return await findAllDraftsForShop({ query, skip, limit });
+  }
+
+  static async findAllPublishedForShop({ product_shop, skip = 0, limit = 50 }) {
+    const query = {
+      product_shop: new ObjectId(product_shop),
+      isPublished: true,
+    };
+    return await findAllPublishedForShop({ query, skip, limit });
+  }
+
+  static async publishProductByShop({ product_shop, product_id }) {
+    return await publishProductByShop({ product_id, product_shop });
+  }
+  static async unPublishProductByShop({ product_shop, product_id }) {
+    return await unPublishProductByShop({ product_id, product_shop });
   }
 }
 

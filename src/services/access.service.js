@@ -84,58 +84,6 @@ class AccessService {
     };
   };
 
-  static handleRefreshTokenV2 = async ({ keyStore, user, refreshToken }) => {
-    const { userId, email } = user;
-    // Check refresh token đã được dùng
-    if (keyStore.refreshTokensUsed.includes(refreshToken)) {
-      // Xem user gửi refresh token hết hạn, đã sử dụng lên là ai:
-      // Nếu Có
-      const { userId, email } = await this.verifyJWT(
-        refreshToken,
-        keyStore.privateKey
-      );
-      await KeyTokenService.deleteKeyById(userId);
-      throw new ForbiddenError("Something wrong happen! PLes login again");
-    }
-
-    // Nếu refresh token chưa được dùng
-    if (keyStore.refreshToken !== refreshToken)
-      throw new AuthFailureError("Shop not registed");
-
-    const foundShop = await findShopByEmail(email);
-    if (!foundShop) throw new AuthFailureError("Shop not registed -- 2");
-
-    // Create new access Token and refresh Token
-    const tokens = await createTokenPair(
-      { userId, email },
-      keyStore.publicKey,
-      keyStore.privateKey
-    );
-    try {
-      const filterUpdateKeyStore = new mongoose.Types.ObjectId(keyStore._id);
-      const updateKeyStore = {
-        $set: {
-          refreshToken: tokens.refreshToken,
-        },
-        $push: {
-          refreshTokensUsed: refreshToken,
-        },
-      };
-      const update = await KeyTokenService.updateByFilter({
-        filter: { _id: filterUpdateKeyStore },
-        update: updateKeyStore,
-      });
-      console.log("Check update key store", update);
-    } catch (error) {
-      console.log({ error });
-    }
-
-    return {
-      user: { userId, email },
-      tokens,
-    };
-  };
-
   static handleRefreshToken = async (refreshToken) => {
     // Check refresh token is used ?
     const foundToken = await KeyTokenService.findByRefreshTokenUsed(
